@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -20,6 +20,10 @@
         <h1>Color Name Camera</h1>
         <p>Point the camera at a surface. The app samples the framed area and shows the closest dataset color name plus a broad color family.</p>
         <button id="startBtn" class="primary full">Start camera</button>
+<button id="installBtn" type="button" class="install-btn">Install app</button>
+<p id="installHint" class="install-hint" hidden>
+  Android Chrome: open the browser menu â‹® and choose Install app or Add to Home screen if this button does not show the install prompt.
+</p>
         <p class="note">Camera access requires HTTPS or localhost. Install as a PWA for the best mobile experience.</p>
       </div>
     </section>
@@ -87,3 +91,4 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
+

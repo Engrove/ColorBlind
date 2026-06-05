@@ -638,5 +638,75 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 await loadColorData();
 renderResult(createResult([227, 217, 190], 'manual'));
 
+/* EIC PWA install UI patch */
+(() => {
+  let deferredInstallPrompt = null;
 
+  function isStandalone() {
+    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
 
+  function getInstallElements() {
+    return {
+      button: document.getElementById('installBtn'),
+      hint: document.getElementById('installHint')
+    };
+  }
+
+  function showManualInstallHint() {
+    const { hint } = getInstallElements();
+    if (!hint || isStandalone()) return;
+    hint.hidden = false;
+    hint.classList.add('is-visible');
+  }
+
+  function updateInstallUi() {
+    const { button, hint } = getInstallElements();
+    if (!button) return;
+
+    if (isStandalone()) {
+      button.hidden = true;
+      if (hint) hint.hidden = true;
+      return;
+    }
+
+    button.hidden = false;
+  }
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallUi();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    const { button, hint } = getInstallElements();
+    if (button) button.hidden = true;
+    if (hint) hint.hidden = true;
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const { button } = getInstallElements();
+    if (!button) return;
+
+    updateInstallUi();
+
+    button.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) {
+        showManualInstallHint();
+        return;
+      }
+
+      const promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+
+      promptEvent.prompt();
+      try {
+        await promptEvent.userChoice;
+      } finally {
+        updateInstallUi();
+      }
+    });
+  });
+})();
