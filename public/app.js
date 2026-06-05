@@ -930,23 +930,19 @@ renderResult(createResult([227, 217, 190], 'manual'));
       control.innerHTML = `<label for="visionModeSelect">Vision mode</label>
         <select id="visionModeSelect" aria-label="Vision mode">
           ${VISION_MODES.map(mode => `<option value="${mode[0]}">${mode[1]}</option>`).join('')}
-        </select>
-        <p id="visionModeHelp" class="vision-mode-help"></p>`;
+        </select>`;
       document.body.appendChild(control);
     }
 
     const select = document.getElementById('visionModeSelect');
-    const help = document.getElementById('visionModeHelp');
     const mode = currentMode();
 
     if (select && select.value !== mode) select.value = mode;
-    if (help) help.textContent = MODE_HELP[mode] || MODE_HELP.standard;
     setMode(mode);
 
     if (select && !select.dataset.bound) {
       select.addEventListener('change', () => {
         setMode(select.value);
-        if (help) help.textContent = MODE_HELP[currentMode()] || MODE_HELP.standard;
         if (state.lastResult) renderResult(state.lastResult);
       });
       select.dataset.bound = 'true';
@@ -1056,3 +1052,4 @@ renderResult(createResult([227, 217, 190], 'manual'));
   if (document.readyState !== 'loading') initVisionUi();
 })();
 /* EIC color-vision modes runtime end */
+

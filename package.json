@@ -9,8 +9,8 @@
                     "start":  "node scripts/dev.mjs",
                     "data:update":  "node scripts/download-colors.mjs public/data/rgb_combined_v05.csv",
                     "build":  "node scripts/build.mjs",
-                    "check":  "node --check public/app.js \u0026\u0026 node --check scripts/build.mjs \u0026\u0026 node --check scripts/dev.mjs \u0026\u0026 node --check scripts/download-colors.mjs \u0026\u0026 node --check public/service-worker.js",
-                    "build:offline-sample":  "node scripts/build.mjs"
+                    "build:offline-sample":  "node scripts/build.mjs",
+                    "check":  "node --check public/app.js \u0026\u0026 node --check scripts/build.mjs \u0026\u0026 node --check scripts/dev.mjs \u0026\u0026 node --check scripts/download-colors.mjs \u0026\u0026 node --check public/service-worker.js"
                 },
     "engines":  {
                     "node":  "\u003e=20"
