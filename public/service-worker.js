@@ -1,4 +1,4 @@
-const CACHE = 'color-name-camera-v3-mobile';
+const CACHE = 'color-name-camera-v4-data-loader';
 const STATIC = [
   './',
   './index.html',
@@ -23,14 +23,23 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
 
+  // Do not proxy cross-origin data requests. Let the browser handle CORS normally.
+  if (url.origin !== self.location.origin) return;
+
   if (url.pathname.includes('/data/')) {
-    event.respondWith(fetch(event.request).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE).then(cache => cache.put(event.request, copy));
-      return res;
-    }).catch(() => caches.match(event.request)));
+    event.respondWith(
+      fetch(event.request, { cache: 'reload' })
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const copy = res.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 

@@ -1,6 +1,54 @@
-﻿const DATA_URLS = [
+const DATA_URLS = [
   './data/rgb_combined_v05.csv',
+  '/data/rgb_combined_v05.csv',
   'https://raw.githubusercontent.com/ayushoriginal/Optimized-RGB-To-ColorName/master/rgb_combined_v05.csv'
+];
+
+const APP_VERSION = 'v4-data-loader';
+
+const EMBEDDED_COLOR_ROWS = [
+  ['#000000', 0, 0, 0, 'black', 'embedded'],
+  ['#0F0F0F', 15, 15, 15, 'Onyx', 'embedded'],
+  ['#1C1C1C', 28, 28, 28, 'gray11', 'embedded'],
+  ['#36454F', 54, 69, 79, 'Charcoal', 'embedded'],
+  ['#696969', 105, 105, 105, 'DimGray', 'embedded'],
+  ['#808080', 128, 128, 128, 'gray', 'embedded'],
+  ['#A9A9A9', 169, 169, 169, 'DarkGray', 'embedded'],
+  ['#D3D3D3', 211, 211, 211, 'LightGray', 'embedded'],
+  ['#F5F5F5', 245, 245, 245, 'WhiteSmoke', 'embedded'],
+  ['#FFFFFF', 255, 255, 255, 'white', 'embedded'],
+  ['#EAE0C8', 234, 224, 200, 'Pearl', 'embedded'],
+  ['#F5F5DC', 245, 245, 220, 'beige', 'embedded'],
+  ['#EFDECD', 239, 222, 205, 'Almond', 'embedded'],
+  ['#FADADD', 250, 218, 221, 'Pale pink', 'embedded'],
+  ['#FFC0CB', 255, 192, 203, 'pink', 'embedded'],
+  ['#F4C2C2', 244, 194, 194, 'Baby pink', 'embedded'],
+  ['#E75480', 231, 84, 128, 'Dark pink', 'embedded'],
+  ['#FF0000', 255, 0, 0, 'red', 'embedded'],
+  ['#8B0000', 139, 0, 0, 'DarkRed', 'embedded'],
+  ['#DC143C', 220, 20, 60, 'crimson', 'embedded'],
+  ['#A52A2A', 165, 42, 42, 'brown', 'embedded'],
+  ['#8B4513', 139, 69, 19, 'SaddleBrown', 'embedded'],
+  ['#B87333', 184, 115, 51, 'Copper', 'embedded'],
+  ['#D2B48C', 210, 180, 140, 'tan', 'embedded'],
+  ['#FFA500', 255, 165, 0, 'orange', 'embedded'],
+  ['#FF8C00', 255, 140, 0, 'DarkOrange', 'embedded'],
+  ['#FFD700', 255, 215, 0, 'gold', 'embedded'],
+  ['#FFFF00', 255, 255, 0, 'yellow', 'embedded'],
+  ['#F0E68C', 240, 230, 140, 'khaki', 'embedded'],
+  ['#808000', 128, 128, 0, 'olive', 'embedded'],
+  ['#008000', 0, 128, 0, 'green', 'embedded'],
+  ['#006400', 0, 100, 0, 'DarkGreen', 'embedded'],
+  ['#32CD32', 50, 205, 50, 'LimeGreen', 'embedded'],
+  ['#00FFFF', 0, 255, 255, 'cyan', 'embedded'],
+  ['#008080', 0, 128, 128, 'teal', 'embedded'],
+  ['#0000FF', 0, 0, 255, 'blue', 'embedded'],
+  ['#000080', 0, 0, 128, 'navy', 'embedded'],
+  ['#87CEEB', 135, 206, 235, 'SkyBlue', 'embedded'],
+  ['#800080', 128, 0, 128, 'purple', 'embedded'],
+  ['#4B0082', 75, 0, 130, 'indigo', 'embedded'],
+  ['#FF00FF', 255, 0, 255, 'magenta', 'embedded'],
+  ['#EE82EE', 238, 130, 238, 'violet', 'embedded']
 ];
 
 const app = document.getElementById('app');
@@ -204,42 +252,82 @@ function confidenceFromDelta(delta) {
   return { text: 'Low', className: 'low' };
 }
 
+function createColorEntry(hex, rgb, title, source) {
+  return {
+    hex: String(hex || '').trim().toUpperCase(),
+    rgb,
+    lab: rgbToLab(rgb),
+    title: cleanName(title),
+    source: cleanName(source) || 'dataset',
+    family: familyFromRgb(rgb)
+  };
+}
+
+function parseColorCsvText(text, sourceLabel) {
+  const normalized = String(text || '').replace(/^\uFEFF/, '');
+  if (!normalized.includes('_Hex') || !normalized.includes('_Red') || !normalized.includes('_Green') || !normalized.includes('_Blue')) {
+    throw new Error(`CSV header not found in ${sourceLabel}`);
+  }
+
+  const rows = parseCsv(normalized);
+  if (rows.length < 2) throw new Error(`CSV has no data rows in ${sourceLabel}`);
+
+  const header = rows.shift().map(h => String(h || '').replace(/^\uFEFF/, '').trim());
+  const index = Object.fromEntries(header.map((h, i) => [h, i]));
+  const required = ['_Hex', '_Red', '_Green', '_Blue', '_Title'];
+
+  for (const key of required) {
+    if (!(key in index)) throw new Error(`Missing ${key} column in ${sourceLabel}`);
+  }
+
+  const colors = rows.map(cols => {
+    const rgb = [
+      Number(cols[index._Red]),
+      Number(cols[index._Green]),
+      Number(cols[index._Blue])
+    ];
+    const title = cleanName(cols[index._Title] || cols[index._Name]);
+    const source = cleanName(cols[index._source]) || sourceLabel;
+    return createColorEntry(cols[index._Hex], rgb, title, source);
+  }).filter(c => /^#[0-9A-F]{6}$/.test(c.hex) && c.rgb.every(Number.isFinite) && c.title);
+
+  if (colors.length < 10) throw new Error(`Only ${colors.length} usable colors in ${sourceLabel}`);
+
+  return colors;
+}
+
+function embeddedColors() {
+  return EMBEDDED_COLOR_ROWS.map(([hex, r, g, b, title, source]) =>
+    createColorEntry(hex, [r, g, b], title, source)
+  );
+}
+
 async function loadColorData() {
-  let lastError = '';
+  const errors = [];
+
   for (const url of DATA_URLS) {
     try {
-      const res = await fetch(url, { cache: 'no-cache' });
+      const res = await fetch(url, {
+        cache: 'reload',
+        headers: { 'Accept': 'text/csv,text/plain,*/*' }
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      const rows = parseCsv(text);
-      const header = rows.shift().map(h => h.trim());
-      const index = Object.fromEntries(header.map((h, i) => [h, i]));
-      const colors = rows.map(cols => {
-        const rgb = [
-          Number(cols[index._Red]),
-          Number(cols[index._Green]),
-          Number(cols[index._Blue])
-        ];
-        const title = cleanName(cols[index._Title] || cols[index._Name]);
-        return {
-          hex: String(cols[index._Hex] || '').trim().toUpperCase(),
-          rgb,
-          lab: rgbToLab(rgb),
-          title,
-          source: cleanName(cols[index._source]) || 'dataset',
-          family: familyFromRgb(rgb)
-        };
-      }).filter(c => /^#[0-9A-F]{6}$/.test(c.hex) && c.rgb.every(Number.isFinite) && c.title);
+      const colors = parseColorCsvText(text, url);
 
-      if (colors.length < 10) throw new Error('Too few colors loaded');
       state.colors = colors;
-      dataStatus.textContent = `${colors.length.toLocaleString('en-US')} colors loaded locally`;
+      const label = colors.length >= 1000 ? 'full color dataset loaded locally' : 'fallback color dataset loaded locally';
+      dataStatus.textContent = `${colors.length.toLocaleString('en-US')} ${label}`;
+      dataStatus.title = `Data source: ${url}`;
       return;
     } catch (err) {
-      lastError = err.message;
+      errors.push(`${url}: ${err.message}`);
     }
   }
-  dataStatus.textContent = `color data error: ${lastError}`;
+
+  state.colors = embeddedColors();
+  dataStatus.textContent = `${state.colors.length.toLocaleString('en-US')} embedded fallback colors loaded`;
+  dataStatus.title = errors.join('\n');
 }
 
 function findNearest(rgb) {

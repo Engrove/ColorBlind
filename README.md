@@ -7,6 +7,18 @@ Mobile-first camera app for naming colors. It samples the camera image and shows
 
 The app is built as a static PWA and is ready for GitHub + Cloudflare Pages.
 
+
+## Fix in this version
+
+The top-left error `color data error: Too few colors loaded` is handled defensively now:
+
+- CSV loading validates the expected `_Hex`, `_Red`, `_Green`, `_Blue` and `_Title` columns.
+- If the local CSV path returns an HTML/404 fallback page, it is rejected instead of parsed as color data.
+- The service worker no longer proxies cross-origin GitHub raw CSV requests.
+- Data CSV requests are network-first and use a new cache version.
+- If both local and upstream CSV loading fail, the app still starts with an embedded emergency color fallback instead of showing `No sample` forever.
+- `dist/build-info.json` is written during Cloudflare build so you can confirm how many color rows were deployed.
+
 ## What changed in this mobile-optimized version
 
 - The large result card was replaced with a compact bottom sheet.

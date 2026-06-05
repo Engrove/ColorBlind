@@ -2,3 +2,8 @@
   Permissions-Policy: camera=(self)
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Cache-Control: no-cache
+
+/data/*.csv
+  Content-Type: text/csv; charset=utf-8
+  Cache-Control: no-store
