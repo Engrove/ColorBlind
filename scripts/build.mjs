@@ -1,36 +1,37 @@
-import { mkdir, rm, readdir, copyFile, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(__dirname, '..');
-const publicDir = path.join(root, 'public');
-const distDir = path.join(root, 'dist');
+const DATA_URL = 'https://raw.githubusercontent.com/ayushoriginal/Optimized-RGB-To-ColorName/master/rgb_combined_v05.csv';
+const root = new URL('..', import.meta.url).pathname;
+const publicDir = `${root}public`;
+const distDir = `${root}dist`;
+const distData = `${distDir}/data/rgb_combined_v05.csv`;
+const publicData = `${publicDir}/data/rgb_combined_v05.csv`;
 
-async function main() {
-  await rm(distDir, { recursive: true, force: true });
-  await copyDirectory(publicDir, distDir);
-  console.log(`Built static site in ${distDir}`);
+async function downloadData() {
+  const res = await fetch(DATA_URL, { headers: { 'User-Agent': 'color-name-camera-build' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  if (!text.includes('_Hex,_Red,_Green,_Blue,_Title')) throw new Error('Unexpected CSV format');
+  return text;
 }
 
-async function copyDirectory(source, target) {
-  await mkdir(target, { recursive: true });
-  const entries = await readdir(source, { withFileTypes: true });
+await rm(distDir, { recursive: true, force: true });
+await cp(publicDir, distDir, { recursive: true });
+await mkdir(dirname(distData), { recursive: true });
 
-  for (const entry of entries) {
-    const from = path.join(source, entry.name);
-    const to = path.join(target, entry.name);
-    if (entry.isDirectory()) {
-      await copyDirectory(from, to);
-    } else if (entry.isFile()) {
-      await copyFile(from, to);
-      const info = await stat(to);
-      if (info.size === 0) throw new Error(`Empty file in build output: ${to}`);
-    }
+try {
+  const text = await downloadData();
+  await writeFile(distData, text, 'utf8');
+  console.log('Downloaded full color data for dist/.');
+} catch (err) {
+  console.warn(`Could not download full data during build: ${err.message}`);
+  if (existsSync(publicData)) {
+    const text = await readFile(publicData, 'utf8');
+    await writeFile(distData, text, 'utf8');
+    console.warn('Used bundled fallback data instead. Run npm run data:update before deployment if this repeats.');
   }
 }
 
-main().catch(error => {
-  console.error(error);
-  process.exit(1);
-});
+console.log('Built dist/ for Cloudflare Pages.');

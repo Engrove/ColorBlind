@@ -1,30 +1,45 @@
 # Color Name Camera
 
-Mobile camera web app for identifying colors from a live camera image.
+Mobile-first camera app for naming colors. It samples the camera image and shows two names:
 
-The app returns two names:
+1. **Closest color name** from `rgb_combined_v05.csv` in `ayushoriginal/Optimized-RGB-To-ColorName`.
+2. **Color family** calculated from the measured RGB value, such as Black, Gray, Beige, Pink, Blue or Green.
 
-1. **Exact color**: nearest named color from `rgb_combined_v05.csv` in `ayushoriginal/Optimized-RGB-To-ColorName`.
-2. **Color family**: broad family derived from the measured RGB/HSL/Lab value, for example `Pink`, `Blue`, `Green`, `Brown`, `Gray`, `Black`, or `White`.
+The app is built as a static PWA and is ready for GitHub + Cloudflare Pages.
 
-The broad family is intentionally calculated from the measured sample instead of blindly trusting the closest exact color. This prevents pale warm colors such as `#E7CEC2` from being classified as gray.
+## What changed in this mobile-optimized version
 
-## Features
+- The large result card was replaced with a compact bottom sheet.
+- The sampling reticle is moved above the sheet and can be moved by tapping the camera image.
+- Technical values and manual HEX testing are collapsed under **Details**.
+- Controls are smaller, stable and arranged in a 3 x 2 grid.
+- The app now samples from the visible reticle position, not from the hidden center of the video.
+- The color name selector penalizes generic dataset labels such as `gray3`, `red2`, `blue4` when a more useful nearby name exists.
+- The family is calculated from the measured camera color, not blindly copied from the dataset name.
+- Data loading is network-first for the CSV so Cloudflare updates do not get stuck behind an old service worker cache.
 
-- English UI.
-- Mobile camera with rear camera preference.
-- Automatic center-target color sampling.
-- Median and dominant-cluster sampling to reduce glare, shadows, texture, and noise.
-- Exact nearest color name from the copied upstream RGB color-name data.
-- Separate color family output.
-- HEX/RGB/nearest HEX/Delta E/source display.
-- Manual HEX tester.
-- PWA manifest and service worker.
-- Cloudflare Pages compatible static output.
+## Repository layout
+
+```text
+public/
+  index.html
+  styles.css
+  app.js
+  manifest.webmanifest
+  service-worker.js
+  data/rgb_combined_v05.csv       # fallback sample unless updated
+scripts/
+  build.mjs                       # Cloudflare Pages build
+  download-colors.mjs             # downloads full upstream CSV for local use
+  dev.mjs                         # dependency-free local server
+package.json
+wrangler.toml
+LICENSE.upstream
+```
 
 ## Local development
 
-Requires Node.js 20 or newer.
+Camera access works on `localhost` or HTTPS.
 
 ```bash
 npm run data:update
@@ -37,14 +52,9 @@ Open:
 http://localhost:8788
 ```
 
-Camera access works on `localhost`. For a phone, deploy to HTTPS, for example Cloudflare Pages.
-
 ## Cloudflare Pages deployment
 
-1. Create a new GitHub repository.
-2. Copy this project into the repository and push it.
-3. In Cloudflare Pages, choose **Connect to Git** and select the repository.
-4. Use these settings:
+Use these settings:
 
 ```text
 Framework preset: None
@@ -53,26 +63,27 @@ Build output directory: dist
 Node version: 20
 ```
 
-During `npm run build`, the script downloads and copies the full upstream CSV into:
+The build downloads the full `rgb_combined_v05.csv` file from GitHub and writes it into `dist/data/rgb_combined_v05.csv`. The browser then loads the CSV locally from your deployed Cloudflare Pages site.
 
-```text
-public/data/rgb_combined_v05.csv
+## Manual GitHub setup
+
+```bash
+git init
+git add .
+git commit -m "Add mobile optimized color camera app"
+git branch -M main
+git remote add origin https://github.com/YOUR-USER/YOUR-REPO.git
+git push -u origin main
 ```
 
-Then the static site is written to:
+Then connect that repository in Cloudflare Pages.
 
-```text
-dist
-```
+## Notes on accuracy
 
-## No-build fallback
+Mobile cameras apply automatic white balance, exposure, sharpening and noise reduction. Glossy, dirty or textured surfaces can still produce unstable values. Use even light and fill the reticle with the target surface. For safety-critical electrical or mechanical work, do not use this app as the only source of truth.
 
-The app also contains a small sample CSV so the UI can open in restricted environments. That sample is not the production dataset. Production deployment should run `npm run build` so the full upstream dataset is copied into the deployed `dist/data/` directory.
+## Data and license
 
-## Data source and license
+Color data source: `ayushoriginal/Optimized-RGB-To-ColorName`, file `rgb_combined_v05.csv`.
 
-See `THIRD_PARTY_NOTICES.md`.
-
-## Safety limitation
-
-Camera color measurements are affected by light source, camera sensor, auto white balance, shadows, glare, dirt, lens quality, compression, material texture, paint aging, translucency, and screen calibration. Use the result as assistance, not as the sole source of truth for safety-critical electrical, automotive, medical, or industrial decisions.
+The upstream project is MIT licensed. The license text is included in `LICENSE.upstream`.

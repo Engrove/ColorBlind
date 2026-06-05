@@ -3,84 +3,78 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="color-scheme" content="dark" />
   <title>Color Name Camera</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app" id="app">
-    <video id="video" playsinline autoplay muted></video>
-    <canvas id="frame" aria-hidden="true"></canvas>
+  <main id="app" class="app" data-mode="live">
+    <video id="video" class="camera" playsinline autoplay muted></video>
+    <canvas id="frame" hidden></canvas>
 
-    <section class="start-panel" id="startPanel">
+    <section id="startScreen" class="start-screen">
       <div class="start-card">
-        <div class="eyebrow">Camera based color identification</div>
+        <div class="app-mark">CN</div>
         <h1>Color Name Camera</h1>
-        <p>
-          Point the camera at a wire, hose, panel, paint surface, component, or material.
-          The app samples the center target and shows both the closest exact color name and the broad color family.
-        </p>
-        <div class="start-actions">
-          <button id="startBtn" class="primary">Start camera</button>
-          <button id="loadDataBtn">Reload color data</button>
-        </div>
-        <div class="notice">
-          Camera color depends on light, white balance, shadows, glare, dirt, and material finish.
-          Do not use this as the only decision source for safety-critical work.
-        </div>
+        <p>Point the camera at a surface. The app samples the framed area and shows the closest dataset color name plus a broad color family.</p>
+        <button id="startBtn" class="primary full">Start camera</button>
+        <p class="note">Camera access requires HTTPS or localhost. Install as a PWA for the best mobile experience.</p>
       </div>
     </section>
 
-    <section class="hud" aria-live="polite">
-      <div class="topbar">
-        <div class="brand">
-          <strong>Color Name Camera</strong>
-          <span id="dataStatus">Loading color data</span>
+    <header class="topbar">
+      <div class="glass title-pill">
+        <strong>Color Name Camera</strong>
+        <span id="dataStatus">loading color data</span>
+      </div>
+      <div id="sampleStatus" class="glass mode-pill">Camera sample</div>
+    </header>
+
+    <div id="reticle" class="reticle" aria-hidden="true">
+      <span></span>
+    </div>
+
+    <div id="labels" class="labels" aria-live="polite"></div>
+
+    <section class="sheet" aria-label="Color result">
+      <div class="result-main">
+        <div id="swatch" class="swatch"></div>
+        <div class="name-block">
+          <span id="nameLabel" class="eyebrow">Closest color name</span>
+          <strong id="colorName" class="color-name">No sample</strong>
         </div>
-        <div class="pill" id="cameraStatus">Camera idle</div>
+        <div id="confidence" class="confidence">--</div>
       </div>
 
-      <div class="target" id="target" aria-hidden="true"></div>
-      <div id="labels" class="labels"></div>
-
-      <aside class="result-card">
-        <div class="swatch-row">
-          <div id="swatch" class="swatch"></div>
-          <div>
-            <div class="caption">Exact color</div>
-            <div id="exactName" class="exact-name">Waiting</div>
-          </div>
+      <div class="family-row">
+        <div>
+          <span class="eyebrow">Color family</span>
+          <strong id="colorFamily" class="family-name">--</strong>
         </div>
+        <div id="measuredHex" class="hex-chip">#------</div>
+      </div>
 
-        <div class="family-row">
-          <div>
-            <div class="caption">Color family</div>
-            <div id="familyName" class="family-name">-</div>
-          </div>
-          <div class="confidence" id="confidence">-</div>
-        </div>
-
-        <div class="meta-grid">
-          <span>Measured HEX</span><strong id="measuredHex">-</strong>
-          <span>Measured RGB</span><strong id="measuredRgb">-</strong>
-          <span>Nearest HEX</span><strong id="nearestHex">-</strong>
-          <span>Delta E</span><strong id="deltaE">-</strong>
-          <span>Source</span><strong id="sourceName">-</strong>
-        </div>
-
-        <div class="manual-test">
+      <details id="details" class="details">
+        <summary>Details and manual HEX test</summary>
+        <dl class="facts">
+          <div><dt>Measured RGB</dt><dd id="measuredRgb">--</dd></div>
+          <div><dt>Nearest HEX</dt><dd id="nearestHex">--</dd></div>
+          <div><dt>Delta E</dt><dd id="deltaE">--</dd></div>
+          <div><dt>Source</dt><dd id="sourceName">--</dd></div>
+        </dl>
+        <form id="hexForm" class="hex-form" autocomplete="off">
           <label for="hexInput">Test HEX manually</label>
-          <div class="manual-row">
-            <input id="hexInput" inputmode="text" autocomplete="off" spellcheck="false" placeholder="#E7CEC2" maxlength="7" />
-            <button id="testHexBtn">Test</button>
+          <div>
+            <input id="hexInput" name="hex" inputmode="text" spellcheck="false" placeholder="#E7CEC2" />
+            <button type="submit">Test</button>
           </div>
-        </div>
-      </aside>
+        </form>
+      </details>
 
       <nav class="controls" aria-label="Camera controls">
-        <button id="autoBtn" class="active">Auto on</button>
+        <button id="autoBtn" class="primary">Auto on</button>
         <button id="sampleBtn">Sample</button>
         <button id="freezeBtn">Freeze</button>
         <button id="labelBtn">Label</button>
@@ -90,6 +84,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
