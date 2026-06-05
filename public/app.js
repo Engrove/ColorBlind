@@ -1,4 +1,4 @@
-const DATA_URLS = [
+﻿const DATA_URLS = [
   './data/rgb_combined_v05.csv',
   'https://raw.githubusercontent.com/ayushoriginal/Optimized-RGB-To-ColorName/master/rgb_combined_v05.csv'
 ];
@@ -142,35 +142,45 @@ function toHex(rgb) {
 
 function familyFromRgb(rgb) {
   const { h, s, l } = rgbToHsl(rgb);
-  const y = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+  const [labL, labA, labB] = rgbToLab(rgb);
+  const chroma = Math.hypot(labA, labB);
+  const max = Math.max(...rgb);
+  const min = Math.min(...rgb);
+  const spread = max - min;
 
-  if (y < 26) return 'Black';
-  if (y > 242 && s < 0.18) return 'White';
+  if (l <= 0.08 || max < 28) return 'Black';
+  if (l >= 0.96 && s <= 0.10) return 'White';
+  if (s <= 0.085 && chroma < 9 && spread < 24) return 'Gray';
 
-  if (s < 0.12) {
-    if (y < 58) return 'Black';
-    if (y > 224) return 'White';
-    return 'Gray';
+  if (h >= 345 || h < 10) {
+    return l > 0.62 && s < 0.70 ? 'Pink' : 'Red';
   }
 
-  if (s < 0.24) {
-    if (h >= 18 && h <= 62 && l >= 0.45) return 'Beige';
-    if (h >= 12 && h <= 48 && l < 0.45) return 'Brown';
-    if (h >= 330 || h <= 16) return l > 0.54 ? 'Pink' : 'Red';
-    if (h >= 190 && h <= 260) return 'Blue';
-    return 'Gray';
+  if (h >= 10 && h < 25) {
+    if (l >= 0.68 && s <= 0.62) return 'Pink';
+    if (l <= 0.42 || s < 0.32) return 'Brown';
+    return 'Orange';
   }
 
-  if (h >= 345 || h < 12) return l > 0.62 ? 'Pink' : 'Red';
-  if (h < 28) return l < 0.52 ? 'Brown' : 'Orange';
-  if (h < 48) return l < 0.42 ? 'Brown' : (l > 0.78 && s < 0.55 ? 'Beige' : 'Orange');
-  if (h < 70) return l > 0.78 && s < 0.45 ? 'Beige' : 'Yellow';
-  if (h < 165) return 'Green';
-  if (h < 195) return 'Cyan';
-  if (h < 255) return 'Blue';
-  if (h < 292) return 'Purple';
-  if (h < 345) return l > 0.62 ? 'Pink' : 'Magenta';
-  return 'Unknown';
+  if (h >= 25 && h < 45) {
+    if (l >= 0.74 && s <= 0.46) return 'Beige';
+    if (l <= 0.50 || s < 0.34) return 'Brown';
+    return 'Orange';
+  }
+
+  if (h >= 45 && h < 68) {
+    if (l >= 0.78 && s <= 0.42) return 'Beige';
+    if (l <= 0.36 && s <= 0.48) return 'Brown';
+    return 'Yellow';
+  }
+
+  if (h >= 68 && h < 165) return 'Green';
+  if (h >= 165 && h < 195) return 'Cyan';
+  if (h >= 195 && h < 255) return 'Blue';
+  if (h >= 255 && h < 292) return 'Purple';
+  if (h >= 292 && h < 345) return 'Pink';
+
+  return labL > 70 ? 'Light neutral' : 'Dark neutral';
 }
 
 function titlePenalty(entry, family) {
@@ -334,7 +344,7 @@ function createResult(rgb, mode) {
     measuredHex: measured,
     nearestHex: nearest.hex,
     name: nearest.title,
-    family: nearest.family,
+    family: familyFromRgb(rgb),
     source: nearest.source,
     delta: nearest.delta,
     confidence: conf,
@@ -441,7 +451,7 @@ function addLabel() {
   if (!r) return;
   const label = document.createElement('div');
   label.className = 'float-label';
-  label.textContent = `${r.name} · ${r.family} · ${r.measuredHex}`;
+  label.textContent = `${r.name} Â· ${r.family} Â· ${r.measuredHex}`;
   label.style.left = `${state.samplePoint.x}%`;
   label.style.top = `${state.samplePoint.y}%`;
   label.style.color = r.measuredHex;
@@ -515,3 +525,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 
 await loadColorData();
 renderResult(createResult([227, 217, 190], 'manual'));
+
