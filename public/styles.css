@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #050814;
   --panel: rgba(11, 16, 32, .88);
   --panel-strong: rgba(11, 16, 32, .96);
@@ -443,3 +443,43 @@ p {
     max-height: min(42dvh, 430px);
   }
 }
+/* EIC minimal ColorBlind UI patch start */
+#dataStatus,
+#sampleStatus,
+#sampleBtn,
+#freezeBtn,
+#labelBtn,
+#torchBtn {
+  display: none !important;
+}
+
+/* Hide the floating top-left title/status badge and top-right sample badge. */
+.topbar,
+.brand,
+.statusbar,
+.status-bar,
+.hud-top,
+.app-header,
+.sample-status,
+.camera-status {
+  display: none !important;
+}
+
+/* Keep only Auto and Copy in the controls area. */
+.controls {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+}
+
+#autoBtn,
+#copyBtn {
+  display: inline-flex !important;
+}
+
+/* Move remaining result card up slightly after removing the top badges. */
+.result-card {
+  margin-top: 0 !important;
+}
+
+/* EIC minimal ColorBlind UI patch end */

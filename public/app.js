@@ -86,6 +86,19 @@ const state = {
   samplePoint: { x: 50, y: 36 },
   loopTimer: 0
 };
+/* EIC minimal UI runtime patch */
+function applyMinimalUi() {
+  for (const id of ['dataStatus', 'sampleStatus', 'sampleBtn', 'freezeBtn', 'labelBtn', 'torchBtn']) {
+    const el = document.getElementById(id);
+    if (el) el.hidden = true;
+  }
+
+  for (const selector of ['.topbar', '.brand', '.statusbar', '.status-bar', '.hud-top', '.app-header', '.sample-status', '.camera-status']) {
+    document.querySelectorAll(selector).forEach(el => { el.hidden = true; });
+  }
+}
+applyMinimalUi();
+
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -624,5 +637,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 
 await loadColorData();
 renderResult(createResult([227, 217, 190], 'manual'));
+
 
 
