@@ -204,8 +204,7 @@ button { touch-action: manipulation; }
 .color-name {
   display: block;
   margin-top: 4px;
-  font-size: clamp(32px, 10vw, 50px);
-  line-height: .95;
+  font-size: clamp(23px, 7vw, 36px); line-height: .95;
   letter-spacing: -.04em;
   white-space: nowrap;
   overflow: hidden;
@@ -431,7 +430,7 @@ p {
     max-height: none;
   }
   .topbar { right: min(410px, 46vw); }
-  .color-name { font-size: clamp(28px, 5vw, 42px); }
+  .color-name { font-size: clamp(23px, 7vw, 36px); }
   .family-name { font-size: clamp(22px, 4vw, 32px); }
 }
 
@@ -514,3 +513,4 @@ p {
   display: block;
 }
 /* EIC PWA install UI patch end */
+

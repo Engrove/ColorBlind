@@ -1,9 +1,31 @@
-/*
-  Permissions-Policy: camera=(self)
+﻿/*
   X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Cache-Control: no-cache
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(self)
 
-/data/*.csv
-  Content-Type: text/csv; charset=utf-8
+/
+  Cache-Control: no-store
+
+/index.html
+  Cache-Control: no-store
+
+/*.html
+  Cache-Control: no-store
+
+/service-worker.js
+  Cache-Control: no-store
+
+/manifest.webmanifest
+  Cache-Control: no-cache, must-revalidate
+
+/app.js
+  Cache-Control: no-cache, must-revalidate
+
+/styles.css
+  Cache-Control: no-cache, must-revalidate
+
+/data/rgb_combined_v05.csv
+  Cache-Control: no-cache, must-revalidate
+
+/build-info.json
   Cache-Control: no-store
