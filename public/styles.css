@@ -513,4 +513,43 @@ p {
   display: block;
 }
 /* EIC PWA install UI patch end */
+/* EIC robust PWA install fallback start */
+.install-btn {
+  width: 100%;
+  margin-top: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
 
+.install-btn.is-ready {
+  background: #facc15;
+  color: #111827;
+}
+
+.install-btn:hover,
+.install-btn:focus-visible {
+  filter: brightness(1.06);
+  outline: none;
+}
+
+.install-hint {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(250, 204, 21, 0.10);
+  color: rgba(248, 250, 252, 0.95);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.install-hint[hidden] {
+  display: none !important;
+}
+/* EIC robust PWA install fallback end */

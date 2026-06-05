@@ -8,6 +8,24 @@
   <title>Color Name Camera</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
+  <!-- EIC early PWA install capture start -->
+  <script>
+    window.__colorBlindInstallPrompt = null;
+    window.__colorBlindInstallInstalled = false;
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      window.__colorBlindInstallPrompt = event;
+      window.dispatchEvent(new Event('colorblind-installprompt-ready'));
+    });
+
+    window.addEventListener('appinstalled', function () {
+      window.__colorBlindInstallPrompt = null;
+      window.__colorBlindInstallInstalled = true;
+      window.dispatchEvent(new Event('colorblind-appinstalled'));
+    });
+  </script>
+  <!-- EIC early PWA install capture end -->
 </head>
 <body>
   <main id="app" class="app" data-mode="live">
@@ -91,4 +109,5 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
+
 

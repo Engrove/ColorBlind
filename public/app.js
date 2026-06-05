@@ -638,12 +638,10 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 await loadColorData();
 renderResult(createResult([227, 217, 190], 'manual'));
 
-/* EIC PWA install UI patch */
+/* EIC robust PWA install fallback runtime start */
 (() => {
-  let deferredInstallPrompt = null;
-
   function isStandalone() {
-    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return Boolean(window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true);
   }
 
   function getInstallElements() {
@@ -653,60 +651,68 @@ renderResult(createResult([227, 217, 190], 'manual'));
     };
   }
 
-  function showManualInstallHint() {
+  function setHint(message) {
     const { hint } = getInstallElements();
-    if (!hint || isStandalone()) return;
+    if (!hint) return;
+    hint.textContent = message;
     hint.hidden = false;
-    hint.classList.add('is-visible');
   }
 
   function updateInstallUi() {
     const { button, hint } = getInstallElements();
     if (!button) return;
 
-    if (isStandalone()) {
+    if (isStandalone() || window.__colorBlindInstallInstalled) {
       button.hidden = true;
       if (hint) hint.hidden = true;
       return;
     }
 
     button.hidden = false;
+
+    if (window.__colorBlindInstallPrompt) {
+      button.textContent = 'Install app';
+      button.classList.add('is-ready');
+      button.title = 'Install ColorBlind as an app';
+    } else {
+      button.textContent = 'Install app / instructions';
+      button.classList.remove('is-ready');
+      button.title = 'Show install instructions if browser prompt is not available';
+    }
   }
 
-  window.addEventListener('beforeinstallprompt', event => {
-    event.preventDefault();
-    deferredInstallPrompt = event;
-    updateInstallUi();
-  });
+  async function installOrShowInstructions() {
+    const promptEvent = window.__colorBlindInstallPrompt;
 
-  window.addEventListener('appinstalled', () => {
-    deferredInstallPrompt = null;
-    const { button, hint } = getInstallElements();
-    if (button) button.hidden = true;
-    if (hint) hint.hidden = true;
-  });
+    if (!promptEvent) {
+      setHint('No automatic install prompt is available right now. On Android Chrome: tap the â‹® menu and choose Install app or Add to Home screen. On desktop Chrome: use the install icon in the address bar or the browser menu.');
+      updateInstallUi();
+      return;
+    }
+
+    window.__colorBlindInstallPrompt = null;
+
+    try {
+      promptEvent.prompt();
+      await promptEvent.userChoice;
+    } catch (error) {
+      setHint('The browser did not open the install prompt. Use Chrome menu â‹® â†’ Install app / Add to Home screen.');
+    } finally {
+      updateInstallUi();
+    }
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     const { button } = getInstallElements();
     if (!button) return;
 
     updateInstallUi();
-
-    button.addEventListener('click', async () => {
-      if (!deferredInstallPrompt) {
-        showManualInstallHint();
-        return;
-      }
-
-      const promptEvent = deferredInstallPrompt;
-      deferredInstallPrompt = null;
-
-      promptEvent.prompt();
-      try {
-        await promptEvent.userChoice;
-      } finally {
-        updateInstallUi();
-      }
-    });
+    button.addEventListener('click', installOrShowInstructions);
   });
+
+  window.addEventListener('colorblind-installprompt-ready', updateInstallUi);
+  window.addEventListener('colorblind-appinstalled', updateInstallUi);
+  window.addEventListener('pageshow', updateInstallUi);
 })();
+/* EIC robust PWA install fallback runtime end */
+
