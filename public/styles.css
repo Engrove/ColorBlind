@@ -555,17 +555,23 @@ p {
 /* EIC robust PWA install fallback end */
 /* EIC color-vision modes start */
 .vision-mode-control {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 40;
   display: grid;
-  gap: 0.42rem;
-  margin: 0 0 0.75rem;
+  gap: 0.4rem;
   padding: 0.65rem 0.75rem;
-  border: 1px solid rgba(255,255,255,.13);
-  border-radius: .95rem;
-  background: rgba(15,23,42,.78);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 0.95rem;
+  background: rgba(15,23,42,.92);
+  box-shadow: 0 16px 42px rgba(0,0,0,.34);
+  backdrop-filter: blur(14px);
 }
 
 .vision-mode-control label {
-  color: rgba(226,232,240,.82);
+  color: rgba(226,232,240,.86);
   font-size: .72rem;
   font-weight: 900;
   letter-spacing: .09em;
@@ -574,11 +580,11 @@ p {
 
 .vision-mode-control select {
   width: 100%;
-  min-height: 2.35rem;
-  border: 1px solid rgba(255,255,255,.18);
+  min-height: 2.25rem;
+  border: 1px solid rgba(255,255,255,.20);
   border-radius: .75rem;
-  padding: .55rem .7rem;
-  background: rgba(2,6,23,.74);
+  padding: .5rem .65rem;
+  background: rgba(2,6,23,.82);
   color: #f8fafc;
   font: inherit;
   font-weight: 800;
@@ -587,14 +593,14 @@ p {
 .vision-mode-help {
   margin: 0;
   color: rgba(203,213,225,.82);
-  font-size: .78rem;
-  line-height: 1.35;
+  font-size: .76rem;
+  line-height: 1.3;
 }
 
 .vision-panel {
   display: grid;
   gap: .42rem;
-  margin: .15rem 0 .8rem;
+  margin: .15rem 0 .75rem;
   padding: .75rem;
   border: 1px solid rgba(250,204,21,.28);
   border-radius: .95rem;
@@ -607,14 +613,14 @@ p {
 
 .vision-row {
   display: grid;
-  grid-template-columns: minmax(8.5rem,.8fr) 1.4fr;
-  gap: .6rem;
+  grid-template-columns: minmax(7rem,.8fr) 1.4fr;
+  gap: .55rem;
   align-items: baseline;
 }
 
 .vision-label {
   color: rgba(226,232,240,.78);
-  font-size: .72rem;
+  font-size: .7rem;
   font-weight: 900;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -627,9 +633,9 @@ p {
 }
 
 .vision-note {
-  margin: .25rem 0 0;
+  margin: .2rem 0 0;
   color: rgba(248,250,252,.92);
-  font-size: .86rem;
+  font-size: .84rem;
   line-height: 1.35;
 }
 
@@ -637,10 +643,20 @@ p {
   filter: contrast(1.12) saturate(.35);
 }
 
-@media (max-width:620px) {
-  .vision-row {
-    grid-template-columns: 1fr;
-    gap: .15rem;
+@media (min-width: 760px) {
+  .vision-mode-control {
+    left: auto;
+    width: min(360px, calc(100vw - 24px));
+  }
+}
+
+@media (max-height: 640px) {
+  .vision-mode-control {
+    bottom: calc(58px + env(safe-area-inset-bottom));
+  }
+
+  .vision-mode-help {
+    display: none;
   }
 }
 /* EIC color-vision modes end */

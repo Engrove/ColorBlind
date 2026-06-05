@@ -31,9 +31,7 @@ function validateColorCsv(text) {
   const header = firstLine.toLowerCase();
 
   for (const required of ['_hex', '_red', '_green', '_blue']) {
-    if (!header.includes(required)) {
-      throw new Error(`Missing ${required} in CSV header`);
-    }
+    if (!header.includes(required)) throw new Error(`Missing ${required} in CSV header`);
   }
 
   if (!header.includes('_title') && !header.includes('_name')) {
@@ -71,10 +69,12 @@ await writeFile(indexPath, indexHtml, 'utf8');
 
 const appPath = path.join(distDir, 'app.js');
 let appJs = await readFile(appPath, 'utf8');
-appJs = appJs.replace(
-  /navigator\.serviceWorker\.register\(['"]\.\/service-worker\.js(?:\?v=[^'"]*)?['"]\)/g,
-  `navigator.serviceWorker.register('./service-worker.js?v=${buildVersion}')`
-);
+appJs = appJs
+  .replace(/__BUILD_VERSION__/g, buildVersion)
+  .replace(
+    /navigator\.serviceWorker\.register\(['"]\.\/service-worker\.js(?:\?v=[^'"]*)?['"](?:,\s*\{[^)]*\})?\)/g,
+    `navigator.serviceWorker.register('./service-worker.js?v=${buildVersion}', { updateViaCache: 'none' })`
+  );
 await writeFile(appPath, appJs, 'utf8');
 
 const swPath = path.join(distDir, 'service-worker.js');
@@ -86,11 +86,11 @@ await writeFile(
   path.join(distDir, 'build-info.json'),
   JSON.stringify({
     app: 'color-name-camera',
-    version: 'v8-cache-busted-app-shell',
+    version: 'v9-vision-modes-cache-recovery',
     buildVersion,
     colorDataSource: 'repo:public/data/rgb_combined_v05.csv',
     colorDataLines: data.lines,
-    cachePolicy: 'network-first-service-worker-and-versioned-assets',
+    cachePolicy: 'versioned-assets-network-first-service-worker-cache-recovery',
     builtAt: new Date().toISOString()
   }, null, 2),
   'utf8'

@@ -632,7 +632,7 @@ window.addEventListener('resize', () => {
 });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=__BUILD_VERSION__', { updateViaCache: 'none' }).catch(() => {}));
 }
 
 await loadColorData();
@@ -715,6 +715,47 @@ renderResult(createResult([227, 217, 190], 'manual'));
   window.addEventListener('pageshow', updateInstallUi);
 })();
 /* EIC robust PWA install fallback runtime end */
+/* EIC cache recovery runtime start */
+(() => {
+  const BUILD_VERSION = '__BUILD_VERSION__';
+  const STORAGE_KEY = 'colorBlindBuildVersion';
+  const RELOAD_KEY = `colorBlindReloaded-${BUILD_VERSION}`;
+
+  async function clearOldAppShell() {
+    try {
+      const registrations = await navigator.serviceWorker?.getRegistrations?.();
+      await Promise.all((registrations || []).map(reg => reg.update().catch(() => {})));
+    } catch {}
+
+    try {
+      const keys = await caches?.keys?.();
+      await Promise.all((keys || []).filter(key => key.startsWith('color-name-camera-')).map(key => caches.delete(key)));
+    } catch {}
+  }
+
+  async function recoverCacheIfNeeded() {
+    try {
+      const response = await fetch(`./build-info.json?ts=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const info = await response.json();
+      const liveVersion = info.buildVersion || BUILD_VERSION;
+      const seenVersion = localStorage.getItem(STORAGE_KEY);
+
+      if (seenVersion && liveVersion && seenVersion !== liveVersion && !sessionStorage.getItem(RELOAD_KEY)) {
+        localStorage.setItem(STORAGE_KEY, liveVersion);
+        sessionStorage.setItem(RELOAD_KEY, '1');
+        await clearOldAppShell();
+        location.reload();
+        return;
+      }
+
+      if (liveVersion) localStorage.setItem(STORAGE_KEY, liveVersion);
+    } catch {}
+  }
+
+  window.addEventListener('load', recoverCacheIfNeeded);
+})();
+/* EIC cache recovery runtime end */
 
 /* EIC color-vision modes runtime start */
 (() => {
@@ -775,13 +816,7 @@ renderResult(createResult([227, 217, 190], 'manual'));
   function colorBucket(rgb) {
     const hsl = rgbToHsl(rgb);
     const lab = rgbToLab(rgb);
-    return {
-      h: hsl.h,
-      s: hsl.s,
-      l: hsl.l,
-      labL: lab[0],
-      chroma: Math.hypot(lab[1], lab[2])
-    };
+    return { h: hsl.h, labL: lab[0], chroma: Math.hypot(lab[1], lab[2]) };
   }
 
   function confidenceVerb(confidence) {
@@ -793,17 +828,11 @@ renderResult(createResult([227, 217, 190], 'manual'));
 
   function warmRedBrownZone(result, bucket) {
     const family = String(result.family || '');
-    return (
-      ['Red', 'Orange', 'Brown', 'Pink', 'Beige'].includes(family) ||
-      warmSpecialName(result.name) ||
-      bucket.h >= 345 ||
-      bucket.h < 55
-    );
+    return ['Red','Orange','Brown','Pink','Beige'].includes(family) || warmSpecialName(result.name) || bucket.h >= 345 || bucket.h < 55;
   }
 
   function modeLabel(mode) {
-    const item = VISION_MODES.find(entry => entry[0] === mode);
-    return item ? item[1] : mode;
+    return (VISION_MODES.find(entry => entry[0] === mode) || [mode, mode])[1];
   }
 
   function interpretColorForVision(result) {
@@ -868,11 +897,11 @@ renderResult(createResult([227, 217, 190], 'manual'));
     }
 
     if (mode === 'tritan') {
-      if (['Blue', 'Green', 'Cyan'].includes(family)) {
+      if (['Blue','Green','Cyan'].includes(family)) {
         output.useAs = 'Blue / Green group';
         output.group = 'Blue / Green / Cyan';
         output.note = 'Tritan vision can make blue, green and cyan shades harder to separate.';
-      } else if (['Yellow', 'Pink', 'Beige'].includes(family)) {
+      } else if (['Yellow','Pink','Beige'].includes(family)) {
         output.useAs = 'Yellow / Pink / Beige group';
         output.group = 'Yellow / Pink / Beige';
         output.note = 'Tritan vision can make yellow, pink and beige shades harder to separate.';
@@ -885,28 +914,55 @@ renderResult(createResult([227, 217, 190], 'manual'));
         output.group = 'Brown / Red';
         output.note = 'Warm brown shades may be more useful as a brown/red group in tritan mode.';
       }
-
       return output;
     }
 
     return output;
   }
 
-  function createVisionModeControl() {
-    if (document.getElementById('visionModeSelect')) return;
+  function ensureVisionControl() {
+    let control = document.getElementById('visionModeControl');
+
+    if (!control) {
+      control = document.createElement('div');
+      control.id = 'visionModeControl';
+      control.className = 'vision-mode-control';
+      control.innerHTML = `<label for="visionModeSelect">Vision mode</label>
+        <select id="visionModeSelect" aria-label="Vision mode">
+          ${VISION_MODES.map(mode => `<option value="${mode[0]}">${mode[1]}</option>`).join('')}
+        </select>
+        <p id="visionModeHelp" class="vision-mode-help"></p>`;
+      document.body.appendChild(control);
+    }
+
+    const select = document.getElementById('visionModeSelect');
+    const help = document.getElementById('visionModeHelp');
+    const mode = currentMode();
+
+    if (select && select.value !== mode) select.value = mode;
+    if (help) help.textContent = MODE_HELP[mode] || MODE_HELP.standard;
+    setMode(mode);
+
+    if (select && !select.dataset.bound) {
+      select.addEventListener('change', () => {
+        setMode(select.value);
+        if (help) help.textContent = MODE_HELP[currentMode()] || MODE_HELP.standard;
+        if (state.lastResult) renderResult(state.lastResult);
+      });
+      select.dataset.bound = 'true';
+    }
+
+    return control;
+  }
+
+  function ensureVisionPanel() {
+    let panel = document.getElementById('visionPanel');
+    if (panel) return panel;
+
     const target = colorName?.closest('.result-card') || document.querySelector('.result-card');
-    if (!target) return;
+    if (!target) return null;
 
-    const control = document.createElement('div');
-    control.className = 'vision-mode-control';
-    control.innerHTML = `<label for="visionModeSelect">Vision mode</label>
-      <select id="visionModeSelect" aria-label="Vision mode">
-        ${VISION_MODES.map(mode => `<option value="${mode[0]}">${mode[1]}</option>`).join('')}
-      </select>
-      <p id="visionModeHelp" class="vision-mode-help"></p>`;
-    target.insertBefore(control, target.firstChild);
-
-    const panel = document.createElement('section');
+    panel = document.createElement('section');
     panel.id = 'visionPanel';
     panel.className = 'vision-panel';
     panel.hidden = true;
@@ -915,31 +971,17 @@ renderResult(createResult([227, 217, 190], 'manual'));
       <div class="vision-row"><span class="vision-label">Standard color</span><span class="vision-value" id="visionStandardColor">--</span></div>
       <div class="vision-row"><span class="vision-label">Standard family</span><span class="vision-value" id="visionStandardFamily">--</span></div>
       <p class="vision-note" id="visionNote">--</p>`;
+
     const swatchRow = target.querySelector('.swatch-row') || target.firstElementChild;
-    target.insertBefore(panel, swatchRow?.nextSibling || control.nextSibling);
-
-    const select = document.getElementById('visionModeSelect');
-    const help = document.getElementById('visionModeHelp');
-    const mode = currentMode();
-    select.value = mode;
-    help.textContent = MODE_HELP[mode] || MODE_HELP.standard;
-    setMode(mode);
-
-    select.addEventListener('change', () => {
-      setMode(select.value);
-      help.textContent = MODE_HELP[currentMode()] || MODE_HELP.standard;
-      if (state.lastResult) renderResult(state.lastResult);
-    });
+    target.insertBefore(panel, swatchRow?.nextSibling || target.firstChild);
+    return panel;
   }
 
   function renderVisionInterpretation(result) {
+    ensureVisionControl();
     const mode = currentMode();
-    const panel = document.getElementById('visionPanel');
-    const select = document.getElementById('visionModeSelect');
-    const help = document.getElementById('visionModeHelp');
+    const panel = ensureVisionPanel();
 
-    if (select && select.value !== mode) select.value = mode;
-    if (help) help.textContent = MODE_HELP[mode] || MODE_HELP.standard;
     if (!result || !panel) return;
 
     if (mode === 'standard') {
@@ -970,9 +1012,7 @@ renderResult(createResult([227, 217, 190], 'manual'));
   }
 
   function copyVisionResult(event) {
-    if (!state.lastResult) return;
-    const mode = currentMode();
-    if (mode === 'standard') return;
+    if (!state.lastResult || currentMode() === 'standard') return;
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -991,7 +1031,7 @@ renderResult(createResult([227, 217, 190], 'manual'));
       `Nearest HEX: ${result.nearestHex}`,
       `Delta E: ${result.delta.toFixed(2)}`,
       `Source: ${result.source}`,
-      `Vision mode: ${modeLabel(mode)}`
+      `Vision mode: ${modeLabel(currentMode())}`
     ];
 
     navigator.clipboard?.writeText(lines.join('\n')).catch(() => {});
@@ -1000,25 +1040,19 @@ renderResult(createResult([227, 217, 190], 'manual'));
   const originalRenderResult = renderResult;
   renderResult = function patchedRenderResult(result) {
     originalRenderResult(result);
-    createVisionModeControl();
     renderVisionInterpretation(result);
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
-    createVisionModeControl();
-    if (copyBtn && !copyBtn.dataset.visionCopyPatched) {
-      copyBtn.addEventListener('click', copyVisionResult, true);
-      copyBtn.dataset.visionCopyPatched = 'true';
-    }
-  });
-
-  if (document.readyState !== 'loading') {
-    createVisionModeControl();
+  function initVisionUi() {
+    ensureVisionControl();
     if (copyBtn && !copyBtn.dataset.visionCopyPatched) {
       copyBtn.addEventListener('click', copyVisionResult, true);
       copyBtn.dataset.visionCopyPatched = 'true';
     }
   }
+
+  document.addEventListener('DOMContentLoaded', initVisionUi);
+  window.addEventListener('pageshow', initVisionUi);
+  if (document.readyState !== 'loading') initVisionUi();
 })();
 /* EIC color-vision modes runtime end */
-
