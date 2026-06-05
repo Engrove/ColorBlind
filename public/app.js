@@ -1,8 +1,4 @@
-const DATA_URLS = [
-  './data/rgb_combined_v05.csv',
-  '/data/rgb_combined_v05.csv',
-  'https://raw.githubusercontent.com/ayushoriginal/Optimized-RGB-To-ColorName/master/rgb_combined_v05.csv'
-];
+﻿const DATA_URLS = ['./data/rgb_combined_v05.csv', '/data/rgb_combined_v05.csv'];
 
 const APP_VERSION = 'v4-data-loader';
 
@@ -110,13 +106,27 @@ function parseCsv(text) {
   let value = '';
   let quoted = false;
 
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
+  const pushCell = () => {
+    row.push(value);
+    value = '';
+  };
+
+  const pushRow = () => {
+    pushCell();
+    if (row.some(cell => String(cell || '').trim() !== '')) rows.push(row);
+    row = [];
+  };
+
+  const input = String(text || '').replace(/^\uFEFF/, '');
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    const next = input[i + 1];
 
     if (quoted) {
       if (ch === '"' && next === '"') {
-        value += '"'; i++;
+        value += '"';
+        i++;
       } else if (ch === '"') {
         quoted = false;
       } else {
@@ -128,17 +138,18 @@ function parseCsv(text) {
     if (ch === '"') {
       quoted = true;
     } else if (ch === ',') {
-      row.push(value); value = '';
+      pushCell();
     } else if (ch === '\n') {
-      row.push(value); value = '';
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-    } else if (ch !== '\r') {
+      pushRow();
+    } else if (ch === '\r') {
+      pushRow();
+      if (next === '\n') i++;
+    } else {
       value += ch;
     }
   }
-  row.push(value);
-  if (row.some(Boolean)) rows.push(row);
+
+  if (value !== '' || row.length) pushRow();
   return rows;
 }
 
@@ -539,7 +550,7 @@ function addLabel() {
   if (!r) return;
   const label = document.createElement('div');
   label.className = 'float-label';
-  label.textContent = `${r.name} Â· ${r.family} Â· ${r.measuredHex}`;
+  label.textContent = `${r.name} Ã‚Â· ${r.family} Ã‚Â· ${r.measuredHex}`;
   label.style.left = `${state.samplePoint.x}%`;
   label.style.top = `${state.samplePoint.y}%`;
   label.style.color = r.measuredHex;
@@ -613,4 +624,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 
 await loadColorData();
 renderResult(createResult([227, 217, 190], 'manual'));
+
 
