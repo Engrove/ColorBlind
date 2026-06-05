@@ -553,3 +553,94 @@ p {
   display: none !important;
 }
 /* EIC robust PWA install fallback end */
+/* EIC color-vision modes start */
+.vision-mode-control {
+  display: grid;
+  gap: 0.42rem;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: .95rem;
+  background: rgba(15,23,42,.78);
+}
+
+.vision-mode-control label {
+  color: rgba(226,232,240,.82);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.vision-mode-control select {
+  width: 100%;
+  min-height: 2.35rem;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: .75rem;
+  padding: .55rem .7rem;
+  background: rgba(2,6,23,.74);
+  color: #f8fafc;
+  font: inherit;
+  font-weight: 800;
+}
+
+.vision-mode-help {
+  margin: 0;
+  color: rgba(203,213,225,.82);
+  font-size: .78rem;
+  line-height: 1.35;
+}
+
+.vision-panel {
+  display: grid;
+  gap: .42rem;
+  margin: .15rem 0 .8rem;
+  padding: .75rem;
+  border: 1px solid rgba(250,204,21,.28);
+  border-radius: .95rem;
+  background: rgba(250,204,21,.08);
+}
+
+.vision-panel[hidden] {
+  display: none !important;
+}
+
+.vision-row {
+  display: grid;
+  grid-template-columns: minmax(8.5rem,.8fr) 1.4fr;
+  gap: .6rem;
+  align-items: baseline;
+}
+
+.vision-label {
+  color: rgba(226,232,240,.78);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.vision-value {
+  color: #f8fafc;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.vision-note {
+  margin: .25rem 0 0;
+  color: rgba(248,250,252,.92);
+  font-size: .86rem;
+  line-height: 1.35;
+}
+
+.app[data-vision-mode="mono"] {
+  filter: contrast(1.12) saturate(.35);
+}
+
+@media (max-width:620px) {
+  .vision-row {
+    grid-template-columns: 1fr;
+    gap: .15rem;
+  }
+}
+/* EIC color-vision modes end */

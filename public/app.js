@@ -716,3 +716,309 @@ renderResult(createResult([227, 217, 190], 'manual'));
 })();
 /* EIC robust PWA install fallback runtime end */
 
+/* EIC color-vision modes runtime start */
+(() => {
+  const STORAGE_KEY = 'colorVisionMode';
+  const VISION_MODES = [
+    ['standard', 'Standard vision'],
+    ['redgreen', 'Red-green color blindness'],
+    ['protan', 'Protan'],
+    ['deutan', 'Deutan'],
+    ['tritan', 'Tritan'],
+    ['mono', 'Monochrome / high-contrast']
+  ];
+
+  const MODE_HELP = {
+    standard: 'Default output. No color-blind simplification.',
+    redgreen: 'Simplifies warm red, brown and orange shades into practical groups.',
+    protan: 'Adds extra caution for dark red and red/brown/orange shades.',
+    deutan: 'Simplifies red, brown, orange and some pale pink/gray confusion zones.',
+    tritan: 'Simplifies blue/green/cyan and yellow/pink/beige confusion zones.',
+    mono: 'Prioritizes brightness and contrast instead of hue.'
+  };
+
+  function currentMode() {
+    const value = localStorage.getItem(STORAGE_KEY) || 'standard';
+    return VISION_MODES.some(mode => mode[0] === value) ? value : 'standard';
+  }
+
+  function setMode(mode) {
+    const value = VISION_MODES.some(item => item[0] === mode) ? mode : 'standard';
+    localStorage.setItem(STORAGE_KEY, value);
+    if (app) app.dataset.visionMode = value;
+  }
+
+  function hasWord(text, words) {
+    const value = String(text || '').toLowerCase();
+    return words.some(word => value.includes(word));
+  }
+
+  function warmSpecialName(name) {
+    return hasWord(name, [
+      'brown', 'chestnut', 'copper', 'rose', 'rust', 'auburn', 'mahogany',
+      'terracotta', 'sienna', 'umber', 'brick', 'maroon', 'burgundy',
+      'garnet', 'cranberry', 'wine', 'claret', 'sangria', 'carmine',
+      'salmon', 'coral', 'tan', 'taupe', 'beige', 'sand'
+    ]);
+  }
+
+  function lightnessLabel(rgb) {
+    const [lightness] = rgbToLab(rgb);
+    if (lightness < 18) return 'Very dark';
+    if (lightness < 35) return 'Dark';
+    if (lightness < 55) return 'Medium dark';
+    if (lightness < 72) return 'Medium light';
+    if (lightness < 88) return 'Light';
+    return 'Very light';
+  }
+
+  function colorBucket(rgb) {
+    const hsl = rgbToHsl(rgb);
+    const lab = rgbToLab(rgb);
+    return {
+      h: hsl.h,
+      s: hsl.s,
+      l: hsl.l,
+      labL: lab[0],
+      chroma: Math.hypot(lab[1], lab[2])
+    };
+  }
+
+  function confidenceVerb(confidence) {
+    const text = String(confidence?.text || '').toLowerCase();
+    if (text === 'high') return 'Use as';
+    if (text === 'medium') return 'Likely';
+    return 'Possibly';
+  }
+
+  function warmRedBrownZone(result, bucket) {
+    const family = String(result.family || '');
+    return (
+      ['Red', 'Orange', 'Brown', 'Pink', 'Beige'].includes(family) ||
+      warmSpecialName(result.name) ||
+      bucket.h >= 345 ||
+      bucket.h < 55
+    );
+  }
+
+  function modeLabel(mode) {
+    const item = VISION_MODES.find(entry => entry[0] === mode);
+    return item ? item[1] : mode;
+  }
+
+  function interpretColorForVision(result) {
+    const mode = currentMode();
+    const bucket = colorBucket(result.rgb);
+    const family = String(result.family || 'Unknown');
+    const output = {
+      mode,
+      verb: confidenceVerb(result.confidence),
+      useAs: `${family} family`,
+      group: '',
+      note: '',
+      standardColor: result.name || 'Unknown',
+      standardFamily: family,
+      confidence: result.confidence?.text || 'Low'
+    };
+
+    if (mode === 'standard') return output;
+
+    if (mode === 'mono') {
+      output.useAs = lightnessLabel(result.rgb);
+      output.group = 'Brightness / contrast';
+      output.note = 'Monochrome mode reports the measured color as text, but prioritizes brightness and contrast.';
+      return output;
+    }
+
+    if (mode === 'redgreen' || mode === 'protan' || mode === 'deutan') {
+      if (warmRedBrownZone(result, bucket)) {
+        output.useAs = 'Red family';
+        output.group = 'Red / Brown / Orange';
+        output.note = mode === 'protan'
+          ? 'Warm brown, copper, rust, chestnut and dark red shades can be hard to separate in protan vision.'
+          : mode === 'deutan'
+            ? 'Brown, red and orange shades can be hard to separate in deutan vision.'
+            : 'Red-green color blindness can make red, brown and orange shades easier to use as a grouped red family.';
+      } else if (family === 'Green') {
+        output.useAs = 'Green family';
+        output.group = 'Red / Green risk';
+        output.note = 'This color may sit in a red/green confusion zone in this vision mode.';
+      } else if (family === 'Purple') {
+        output.useAs = 'Blue / Purple group';
+        output.group = 'Blue / Purple';
+        output.note = 'Purple and related names can be less reliable in red-green color-blind modes.';
+      } else if (family === 'Cyan') {
+        output.useAs = 'Blue / Green group';
+        output.group = 'Cyan / Blue-Green';
+        output.note = 'Cyan and blue-green shades may be easier to use as a grouped label.';
+      }
+
+      if (mode === 'protan' && family === 'Red' && bucket.labL < 35) {
+        output.group = output.group ? `${output.group} / Black-adjacent` : 'Black-adjacent dark red';
+        output.note = 'Dark red can be confused with very dark colors in protan vision. Verify critical uses another way.';
+      }
+
+      if (mode === 'deutan' && family === 'Pink' && bucket.labL > 72 && bucket.chroma < 26) {
+        output.useAs = 'Light red / pink group';
+        output.group = 'Pink / Gray / White risk';
+        output.note = 'Pale pinks may be hard to separate from light gray or white in deutan vision.';
+      }
+
+      return output;
+    }
+
+    if (mode === 'tritan') {
+      if (['Blue', 'Green', 'Cyan'].includes(family)) {
+        output.useAs = 'Blue / Green group';
+        output.group = 'Blue / Green / Cyan';
+        output.note = 'Tritan vision can make blue, green and cyan shades harder to separate.';
+      } else if (['Yellow', 'Pink', 'Beige'].includes(family)) {
+        output.useAs = 'Yellow / Pink / Beige group';
+        output.group = 'Yellow / Pink / Beige';
+        output.note = 'Tritan vision can make yellow, pink and beige shades harder to separate.';
+      } else if (family === 'Purple') {
+        output.useAs = 'Purple / Red group';
+        output.group = 'Purple / Red';
+        output.note = 'Tritan vision can make purple and red shades harder to separate.';
+      } else if (family === 'Brown' && bucket.h < 55) {
+        output.useAs = 'Brown / Red group';
+        output.group = 'Brown / Red';
+        output.note = 'Warm brown shades may be more useful as a brown/red group in tritan mode.';
+      }
+
+      return output;
+    }
+
+    return output;
+  }
+
+  function createVisionModeControl() {
+    if (document.getElementById('visionModeSelect')) return;
+    const target = colorName?.closest('.result-card') || document.querySelector('.result-card');
+    if (!target) return;
+
+    const control = document.createElement('div');
+    control.className = 'vision-mode-control';
+    control.innerHTML = `<label for="visionModeSelect">Vision mode</label>
+      <select id="visionModeSelect" aria-label="Vision mode">
+        ${VISION_MODES.map(mode => `<option value="${mode[0]}">${mode[1]}</option>`).join('')}
+      </select>
+      <p id="visionModeHelp" class="vision-mode-help"></p>`;
+    target.insertBefore(control, target.firstChild);
+
+    const panel = document.createElement('section');
+    panel.id = 'visionPanel';
+    panel.className = 'vision-panel';
+    panel.hidden = true;
+    panel.innerHTML = `<div class="vision-row"><span class="vision-label" id="visionActionLabel">Use as</span><span class="vision-value" id="visionUseAs">--</span></div>
+      <div class="vision-row"><span class="vision-label">Likely confusion group</span><span class="vision-value" id="visionGroup">--</span></div>
+      <div class="vision-row"><span class="vision-label">Standard color</span><span class="vision-value" id="visionStandardColor">--</span></div>
+      <div class="vision-row"><span class="vision-label">Standard family</span><span class="vision-value" id="visionStandardFamily">--</span></div>
+      <p class="vision-note" id="visionNote">--</p>`;
+    const swatchRow = target.querySelector('.swatch-row') || target.firstElementChild;
+    target.insertBefore(panel, swatchRow?.nextSibling || control.nextSibling);
+
+    const select = document.getElementById('visionModeSelect');
+    const help = document.getElementById('visionModeHelp');
+    const mode = currentMode();
+    select.value = mode;
+    help.textContent = MODE_HELP[mode] || MODE_HELP.standard;
+    setMode(mode);
+
+    select.addEventListener('change', () => {
+      setMode(select.value);
+      help.textContent = MODE_HELP[currentMode()] || MODE_HELP.standard;
+      if (state.lastResult) renderResult(state.lastResult);
+    });
+  }
+
+  function renderVisionInterpretation(result) {
+    const mode = currentMode();
+    const panel = document.getElementById('visionPanel');
+    const select = document.getElementById('visionModeSelect');
+    const help = document.getElementById('visionModeHelp');
+
+    if (select && select.value !== mode) select.value = mode;
+    if (help) help.textContent = MODE_HELP[mode] || MODE_HELP.standard;
+    if (!result || !panel) return;
+
+    if (mode === 'standard') {
+      panel.hidden = true;
+      return;
+    }
+
+    const output = interpretColorForVision(result);
+    panel.hidden = false;
+
+    const actionLabel = document.getElementById('visionActionLabel');
+    const useAs = document.getElementById('visionUseAs');
+    const group = document.getElementById('visionGroup');
+    const standardColor = document.getElementById('visionStandardColor');
+    const standardFamily = document.getElementById('visionStandardFamily');
+    const note = document.getElementById('visionNote');
+
+    if (actionLabel) actionLabel.textContent = output.verb;
+    if (useAs) useAs.textContent = output.useAs;
+    if (group) group.textContent = output.group || 'No special group';
+    if (standardColor) standardColor.textContent = output.standardColor;
+    if (standardFamily) standardFamily.textContent = output.standardFamily;
+    if (note) note.textContent = `${output.note} Does not diagnose color vision.`;
+
+    if (colorName) colorName.textContent = output.useAs;
+    if (nameLabel) nameLabel.textContent = output.verb;
+    if (colorFamily) colorFamily.textContent = output.group || output.standardFamily;
+  }
+
+  function copyVisionResult(event) {
+    if (!state.lastResult) return;
+    const mode = currentMode();
+    if (mode === 'standard') return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const result = state.lastResult;
+    const output = interpretColorForVision(result);
+    const lines = [
+      `${output.verb}: ${output.useAs}`,
+      `Likely confusion group: ${output.group || 'No special group'}`,
+      `Confidence: ${output.confidence}`,
+      `Note: ${output.note} Does not diagnose color vision.`,
+      `Standard color: ${output.standardColor}`,
+      `Standard family: ${output.standardFamily}`,
+      `Measured HEX: ${result.measuredHex}`,
+      `Measured RGB: ${result.rgb.join(', ')}`,
+      `Nearest HEX: ${result.nearestHex}`,
+      `Delta E: ${result.delta.toFixed(2)}`,
+      `Source: ${result.source}`,
+      `Vision mode: ${modeLabel(mode)}`
+    ];
+
+    navigator.clipboard?.writeText(lines.join('\n')).catch(() => {});
+  }
+
+  const originalRenderResult = renderResult;
+  renderResult = function patchedRenderResult(result) {
+    originalRenderResult(result);
+    createVisionModeControl();
+    renderVisionInterpretation(result);
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    createVisionModeControl();
+    if (copyBtn && !copyBtn.dataset.visionCopyPatched) {
+      copyBtn.addEventListener('click', copyVisionResult, true);
+      copyBtn.dataset.visionCopyPatched = 'true';
+    }
+  });
+
+  if (document.readyState !== 'loading') {
+    createVisionModeControl();
+    if (copyBtn && !copyBtn.dataset.visionCopyPatched) {
+      copyBtn.addEventListener('click', copyVisionResult, true);
+      copyBtn.dataset.visionCopyPatched = 'true';
+    }
+  }
+})();
+/* EIC color-vision modes runtime end */
+
