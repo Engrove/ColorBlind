@@ -1,4 +1,4 @@
-const app = document.getElementById('app');
+﻿const app = document.getElementById('app');
 const video = document.getElementById('video');
 const canvas = document.getElementById('frame');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -152,7 +152,92 @@ function sampleCamera() {
 }
 
 function loop() { if (state.auto && !state.frozen) renderResult(sampleCamera()); state.loopTimer = setTimeout(loop, 220); }
-async function startCamera() { try { state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: false }); video.srcObject = state.stream; await video.play(); startScreen.classList.add('hidden'); clearTimeout(state.loopTimer); loop(); } catch { alert('Camera could not start. Use HTTPS or localhost and allow camera permission.'); } }
+async function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera API is not available in this browser. Use current Chrome/Edge/Samsung Internet over HTTPS.');
+    return;
+  }
+
+  const attempts = [
+    {
+      name: 'environment camera ideal',
+      constraints: {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 24, max: 30 }
+        },
+        audio: false
+      }
+    },
+    {
+      name: 'environment camera simple',
+      constraints: {
+        video: { facingMode: 'environment' },
+        audio: false
+      }
+    },
+    {
+      name: 'any camera',
+      constraints: {
+        video: true,
+        audio: false
+      }
+    }
+  ];
+
+  let lastError = null;
+
+  for (const attempt of attempts) {
+    try {
+      if (state.stream) {
+        state.stream.getTracks().forEach(track => track.stop());
+        state.stream = null;
+      }
+
+      state.stream = await navigator.mediaDevices.getUserMedia(attempt.constraints);
+      video.srcObject = state.stream;
+      video.setAttribute('playsinline', '');
+      video.muted = true;
+
+      try {
+        await video.play();
+      } catch (playError) {
+        console.warn('Video play warning after camera grant', playError);
+      }
+
+      startScreen.classList.add('hidden');
+      clearTimeout(state.loopTimer);
+      loop();
+      console.info('Camera started with profile:', attempt.name);
+      return;
+    } catch (error) {
+      lastError = error;
+      console.warn('Camera start attempt failed:', attempt.name, error);
+    }
+  }
+
+  const name = lastError?.name || 'UnknownError';
+  const message = lastError?.message || 'No browser detail';
+
+  let userMessage;
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    userMessage = 'Camera permission is blocked. Open browser site settings for this page and allow Camera, then reload.';
+  } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    userMessage = 'No camera was found by the browser.';
+  } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+    userMessage = 'The camera is busy or blocked by another app. Close other camera apps and reload.';
+  } else if (name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError') {
+    userMessage = 'The requested camera profile is not supported on this device.';
+  } else if (name === 'SecurityError') {
+    userMessage = 'Camera is blocked by browser security policy or site permissions.';
+  } else {
+    userMessage = 'Camera could not start.';
+  }
+
+  alert(`${userMessage}\n\nBrowser error: ${name}\n${message}`);
+}
 function parseHex(value) { const m = String(value || '').trim().match(/^#?([0-9a-fA-F]{6})$/); if (!m) return null; return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)); }
 async function copyResult() { const r = state.lastResult; if (!r) return; await navigator.clipboard?.writeText(`Color: ${colorName.textContent}\nFamily: ${colorFamily.textContent}\nMeasured HEX: ${r.measuredHex}\nMeasured RGB: ${r.rgb.map(v => Math.round(v)).join(', ')}\nVision mode: ${modeLabel(currentMode())}`); }
 
@@ -163,3 +248,4 @@ hexForm.addEventListener('submit', event => { event.preventDefault(); const rgb 
 
 await loadColorData(); ensureVisionControl(); renderResult(createResult([227, 217, 190], 'manual'));
 if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js?v=v5-colorblind-assist', { updateViaCache: 'none' }).catch(() => {}));
+
