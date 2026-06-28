@@ -99,3 +99,16 @@ Mobile cameras apply automatic white balance, exposure, sharpening and noise red
 Color data source: `ayushoriginal/Optimized-RGB-To-ColorName`, file `rgb_combined_v05.csv`.
 
 The upstream project is MIT licensed. The license text is included in `LICENSE.upstream`.
+
+
+## Colorblind assist update
+
+This version adds a practical colorblind assist workflow:
+
+- selectable vision modes: standard, red-green assist, protan, deutan, tritan and monochrome/contrast;
+- live camera preview filters for the selected assist mode;
+- clearer text interpretation with use-as family, confusion group, standard color and standard family;
+- fixed result-panel mounting for the current `.sheet` layout so the assist panel is visible;
+- faster live sampling interval for more responsive camera feedback.
+
+The app still reports camera-derived color as an assistive interpretation, not as a medical diagnosis or guaranteed true color.
